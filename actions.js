@@ -518,10 +518,13 @@ let processAlreadyRunning = false;
 
 
 
-
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     try {
         if (message.action === "startProcess") {
+
+            // 🔹 عرض كل البيانات المرسلة مع الرسالة
+            console.log("📨 Données reçues avec startProcess:", message);
+
             if (
                 window.location.href.startsWith("https://contacts.google.com") ||
                 window.location.href.startsWith("https://www.google.com/maps") ||
@@ -557,5 +560,6 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         processAlreadyRunning = false;  
         sendResponse({ status: "error", message: error.message });
     }
-    return true;
+    return true; // مهم للحفاظ على الاتصال لإرسال response بشكل غير متزامن
 });
+
