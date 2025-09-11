@@ -200,3 +200,80 @@ chrome.tabs.onCreated.addListener(async (tab) => {
         });
     });
 });
+
+
+
+
+chrome.webNavigation.onCompleted.addListener((details) => {
+    console.log("➡️ Navigation completed pour tabId:", details.tabId, "Détails:", details);
+
+    const url = details.url; 
+    console.log("🔹 URL détectée:", url);
+
+    if (!url) {
+        console.log("⚠️ Aucun URL détecté pour tabId:", details.tabId);
+        return;
+    }
+
+    const ignoredUrls = [
+        "https://contacts.google.com",
+        "https://www.google.com/maps",
+        "https://trends.google.com/trends/"
+    ];
+
+    if (ignoredUrls.some(prefix => url.startsWith(prefix))) {
+        console.log("🚫 URL ignorée (commence par un prefix exclu) pour tabId:", details.tabId, "URL:", url);
+        return;
+    } else {
+        console.log("✅ URL non ignorée, traitement possible pour tabId:", details.tabId);
+    }
+
+    const monitoredPatterns = [
+        "https://workspace.google.com/",
+        "https://accounts.google.com/",
+        "https://myaccount.google.com/security",
+        "https://gds.google.com/",
+        "https://myaccount.google.com/interstitials/birthday",
+        "https://gds.google.com/web/recoveryoptions",
+        "https://gds.google.com/web/homeaddress"
+    ];
+
+    const shouldProcess = (
+        monitoredPatterns.some(part => url.includes(part)) ||
+        url === "chrome://newtab/"
+    );
+    console.log("🔍 Vérification si l'URL correspond à un pattern surveillé pour tabId:", details.tabId, "=>", shouldProcess);
+
+    if (shouldProcess) {
+        console.log("✅ URL correspond au modèle surveillé pour tabId:", details.tabId, "URL:", url);
+
+        if (processingTabs[details.tabId]) {
+            console.log("⏳ Tab déjà en cours de traitement, skip tabId:", details.tabId);
+            return;
+        }
+
+        console.log("🚀 Démarrage du processus pour tabId:", details.tabId);
+        processingTabs[details.tabId] = true;
+
+        sendMessageToContentScript(
+            details.tabId,
+            { action: "startProcess" },
+            (response) => {
+                console.log("📩 Réponse reçue du content script pour tabId:", details.tabId, "➡️", response);
+
+                setTimeout(() => {
+                    console.log("🧹 Nettoyage du tab après traitement pour tabId:", details.tabId);
+                    delete processingTabs[details.tabId];
+                }, 5000);
+            },
+            (error) => {
+                console.log("❌ Erreur pendant traitement tabId:", details.tabId, "⚡", error);
+
+                delete processingTabs[details.tabId];
+            }
+        );
+
+    } else {
+        console.log("🔍 URL ne correspond à aucun modèle surveillé pour tabId:", details.tabId, "URL:", url);
+    }
+});
