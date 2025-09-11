@@ -1,0 +1,6 @@
+[
+    {
+        "process": "login",
+        "sleep": 1
+    }
+]

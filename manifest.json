@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "login ",
+  "version": "1.0.0",
+  "description": "",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "webNavigation",
+    "alarms",
+    "downloads",
+    "webRequest",
+    "webRequestAuthProvider",
+    "declarativeNetRequest",
+    "scripting"
+
+  ]
+  ,"host_permissions": [
+    "file://*",
+    "<all_urls>"
+  ],
+  "key":"LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tDQpNSUlDZHdJQkFEQU5CZ2txaGtpRzl3MEJBUUVGQUFTQ0FtRXdnZ0pkQWdFQUFvR0JBTEFldmFaUXQxQjBZZXpPDQpkamd5RTF4R2FXQWxxK2loZUpvb3p2bFdNMDdBTkJZOS9RMWc2YXJLcnNGK0VXdjU4enV2c2x3dENnU3QxZlJIDQo0ajA2QzVveDg2SWV1USt6NktQZVhmK3RadFRTY3RHMWRsZ1hKbC80QXFUMUZ0bzRsVFBBYldiUnFjbzZwT0VVDQo4MTRoUUoxdkhlL2J3WVJwcmlTT3dZUjU5NEcxQWdNQkFBRUNnWUJTQ1UrdnE4Tm52MzVwcnRZVVlRYnhvWDZ1DQpJWDRNODBIWkZROHJ4MEpJK1hDSnQ4QXF2aXk1dUlWa2JkT3hweERzaVcrY1RnSnZvWVdhcnUwc05lQjI0UWUrDQo2TnBKTklZbG5QcG9tbW1XalNsVms3c3k4anRJcks5YXEzaHlVR3NpWlFER2lqR29zYVYyRklvQnc4WE9ubzBCDQo2bHQ3elZlUVdVVGNCMFBqVlFKQkFPa0tjZnJRZlZZczBMV0F6Z1lzY2VFcHJNaVNCdGhtZTdpVTFPUU5waVVBDQpqcW5OSW5JK2s2MzZQamFQcUw0MFUvTWV4blYyL3VPV2hsMzJ6NzNJbmc4Q1FRREJlTENxOG1oMmVsWlhVR05JDQpmM3pTNlpyQnV4eDF2Qm9XRmV5ZlZsdEtaNWpFcHJwbi9OWlZpUnBSdEhSNCt5U0tlNFhBY2lMRFc0RmVod1ViDQpDK2Y3QWtFQWxkVmliV29KZkJPNmFVaVVyb0Y3QXROQnhYK21LUkxUYjEwNStCc1NmTzM3ekE4Wm02ekNWUFQxDQpkUzB1eUlScWlZRjdCbUZwQnJsc1VSUDBnOGh1WHdKQkFMQmFMTitGMnNhME9PT1orUVhxZjROWlFLRjZ4elJpDQpZM3ppT3kvNmJYaGkraE8yem85ZkhwZ1ZReEphNVJncUJHTGV1VXAwUDAvSHB5TGMvRUJ0RitVQ1FFWW9vZ3JIDQpTQnBGMUZwNzdiRUlRbVNTNFd2Sk5PQjE3YWw3bzFZaGxjMVBKNGY3SkZ0amJIM1JaZDFBRkFiZkVEVlNRNnZHDQorL21yS3JXc1k0SXNaNmM9DQotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tDQo=",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_icon": "icons/icon3.png",
+    "default_title": "Auto login Gmail with Proxy"
+  },
+  "icons": {
+    "16": "icons/icon1.png",
+    "24": "icons/icon2.png",
+    "32": "icons/icon3.png",
+    "48": "icons/icon4.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://accounts.google.com/*",
+        "*://mail.google.com/*",
+        "https://*.google.com/*"
+      ],
+      "js": ["actions.js" , "gmail_process.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "data.txt",
+        "traitement.json",
+        "gmail_process.js",
+        "ReportingActions.js"
+
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
