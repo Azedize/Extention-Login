@@ -48,7 +48,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "gmail_process.js"
+        "gmail_process.js",
+        "traitement.json"
       ],
       "matches": ["<all_urls>"]
     }
