@@ -131,8 +131,15 @@ async function extractProxyFromUrl(url, tabId, sendNow = true) {
         else dataToSend = { profile_email: extraParts[0], profile_password: extraParts[1], recovery_email: extraParts[2] };
 
         console.log("📤 Données préparées pour content script:", dataToSend);
+        // enregistre data vers localStorage
+
+
+        // ✅ Enregistrer les données dans chrome.storage.local
+        await chrome.storage.local.set({ "currentData": dataToSend });
+        console.log("💾 Données enregistrées:", dataToSend);
 
         return dataToSend;
+
 
     } catch (err) {
         console.error("💥 Erreur extractProxyFromUrl:", err);
@@ -145,6 +152,7 @@ async function extractProxyFromUrl(url, tabId, sendNow = true) {
 // 🔔 مراقبة إنشاء تاب جديد + إغلاق القديم
 // ===========================
 chrome.tabs.onCreated.addListener(async (tab) => {
+
     const url = tab.pendingUrl || tab.url;
 
     // إذا كان هناك تاب قيد المعالجة بالفعل، تجاهله
@@ -204,16 +212,15 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 
 
 
-chrome.webNavigation.onCompleted.addListener((details) => {
-    console.log("➡️ Navigation completed pour tabId:", details.tabId, "Détails:", details);
 
-    const url = details.url; 
-    console.log("🔹 URL détectée:", url);
 
-    if (!url) {
-        console.log("⚠️ Aucun URL détecté pour tabId:", details.tabId);
-        return;
-    }
+
+
+
+
+chrome.webNavigation.onCompleted.addListener(async (details) => {
+
+    console.log("➡️ Navigation completed pour tabId:",  details.tabId, "URL:", details.url);
 
     const ignoredUrls = [
         "https://contacts.google.com",
@@ -221,16 +228,11 @@ chrome.webNavigation.onCompleted.addListener((details) => {
         "https://trends.google.com/trends/"
     ];
 
-    if (ignoredUrls.some(prefix => url.startsWith(prefix))) {
-        console.log("🚫 URL ignorée (commence par un prefix exclu) pour tabId:", details.tabId, "URL:", url);
-        return;
-    } else {
-        console.log("✅ URL non ignorée, traitement possible pour tabId:", details.tabId);
-    }
-
     const monitoredPatterns = [
+        "https://mail.google.com/mail",
         "https://workspace.google.com/",
         "https://accounts.google.com/",
+        "https://accounts.google.com/signin/v2/",
         "https://myaccount.google.com/security",
         "https://gds.google.com/",
         "https://myaccount.google.com/interstitials/birthday",
@@ -238,42 +240,73 @@ chrome.webNavigation.onCompleted.addListener((details) => {
         "https://gds.google.com/web/homeaddress"
     ];
 
-    const shouldProcess = (
-        monitoredPatterns.some(part => url.includes(part)) ||
-        url === "chrome://newtab/"
-    );
-    console.log("🔍 Vérification si l'URL correspond à un pattern surveillé pour tabId:", details.tabId, "=>", shouldProcess);
-
-    if (shouldProcess) {
-        console.log("✅ URL correspond au modèle surveillé pour tabId:", details.tabId, "URL:", url);
-
-        if (processingTabs[details.tabId]) {
-            console.log("⏳ Tab déjà en cours de traitement, skip tabId:", details.tabId);
-            return;
-        }
-
-        console.log("🚀 Démarrage du processus pour tabId:", details.tabId);
-        processingTabs[details.tabId] = true;
-
-        sendMessageToContentScript(
-            details.tabId,
-            { action: "startProcess" },
-            (response) => {
-                console.log("📩 Réponse reçue du content script pour tabId:", details.tabId, "➡️", response);
-
-                setTimeout(() => {
-                    console.log("🧹 Nettoyage du tab après traitement pour tabId:", details.tabId);
-                    delete processingTabs[details.tabId];
-                }, 5000);
-            },
-            (error) => {
-                console.log("❌ Erreur pendant traitement tabId:", details.tabId, "⚡", error);
-
-                delete processingTabs[details.tabId];
-            }
-        );
-
-    } else {
-        console.log("🔍 URL ne correspond à aucun modèle surveillé pour tabId:", details.tabId, "URL:", url);
+    if (ignoredUrls.some(prefix => details.url.startsWith(prefix))) {
+        console.log("🚫 URL ignored (startsWith match):", details.url);
+        return;
     }
+
+    // استرجاع البيانات من localStorage باستخدام المفتاح الثابت
+    const storedDataJson = await chrome.storage.local.get("currentData");
+    const dataToSend = storedDataJson["currentData"];
+
+    if (!dataToSend) {
+        console.warn("⚠️ Pas de données stockées, contenu actuel du storage:", storedDataJson);
+        return;
+    }
+
+    // التأكد من أن URL مراقب
+    let shouldProcess = false;
+    for (const part of monitoredPatterns) {
+        console.log(`🔹 Vérification pattern: "${part}" avec URL: "${details.url}"`);
+        if (details.url.includes(part) || details.url.startsWith(part)) {
+            console.log(`✅ URL matched pour le pattern: "${part}"`);
+            shouldProcess = true;
+            break;
+        }
+    }
+    if (details.url === "chrome://newtab/") {
+        shouldProcess = true;
+        console.log("✅ URL is a new tab");
+    }
+
+    if (!shouldProcess) {
+        console.log("⚠️ URL did not match any monitored pattern:", details.url);
+        return;
+    }
+
+    // Avoid processing same tab twice
+    if (processingTabs[details.tabId]) {
+        console.log("⚠️ Tab already being processed, skipping:", details.tabId);
+        return;
+    }
+
+    processingTabs[details.tabId] = true;
+
+    sendMessageToContentScript(
+        details.tabId,
+        { action: "startProcess", ...dataToSend },
+        (response) => {
+            console.log("📩 Process response received for tab:", details.tabId, "Response:", response);
+            delete processingTabs[details.tabId];
+        },
+        (error) => {
+            console.error("❌ Error during processing tab:", details.tabId, "Error:", error);
+            delete processingTabs[details.tabId];
+        }
+    );
+
+    // Async sleep example
+    await new Promise(resolve => setTimeout(resolve, 5000));
 });
+
+
+
+async function sleep(ms) {
+    const totalSeconds = Math.ceil(ms / 1000);
+    for (let i = 1; i <= totalSeconds; i++) {
+        console.log(`⏳ Attente... ${i} seconde(s) écoulée(s)`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    console.log("✅ Pause terminée !");
+}
+
