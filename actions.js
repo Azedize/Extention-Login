@@ -6,56 +6,115 @@ const redirectUrls = [
 
 
 
+const createPopup = async (message) => {
+  try {
+    await sleep(4000);
 
-let Email_Contact = null;
-let cleanEmail = null;
-
-
-
-const createPopup = async () => {
-    try {
-        await sleep(4000)
-
-        if (redirectUrls.includes(window.location.href)) {
-            window.location.href = "https://mail.google.com/mail/u/0/#inbox";
-        }
-        
-        console.log("🚀 Démarrage du processus ...");
-
-
-        const completedActions = await new Promise((resolve) => {
-            chrome.storage.local.get("completedActions", (result) => {
-                resolve(result.completedActions || {});
-            });
-        });
-
-        const scenario = await fetch(chrome.runtime.getURL("traitement.json"))
-            .then(response => response.json())
-            .then(data => {
-                // Affichage professionnel du JSON
-                console.groupCollapsed("%c📦 Contenu de traitement.json", "color: teal; font-weight: bold;");
-                console.log("%c====================", "color: teal;");
-                console.log(JSON.stringify(data, null, 2));  // formatage avec indentation
-                console.log("%c====================", "color: teal;");
-                console.groupEnd();
-                return data;
-            })
-            .catch(error => {
-                console.log("%c❌ Erreur chargement traitement.json :", "color: red;", error);
-                return [];
-            });
-
-        const ispProcess = gmail_process;
-
-        await ReportingProcess(scenario, ispProcess);
-
-
-        clearChromeStorageLocal();
-
-
-    } catch (error) {
-        console.log("%c❌ Erreur lors de la création de la popup :", "color: red;", error.message);
+    if (redirectUrls.includes(window.location.href)) {
+      console.log("🔄 Page dans redirectUrls, redirection vers Gmail Inbox");
+      window.location.href = "https://mail.google.com/mail/u/0/#inbox";
+      return;
     }
+
+    console.log("🚀 Démarrage du processus ...");
+
+    // 🟪 Récupération des données de démarrage
+    let processData;
+    if (message && Object.keys(message).length > 0) {
+      processData = message;
+      console.groupCollapsed("%c📨 Données reçues avec startProcess", "color: blue; font-weight: bold;");
+      console.log(JSON.stringify(processData, null, 2));
+      console.groupEnd();
+    } else {
+      processData = await new Promise(resolve => {
+        chrome.storage.local.get("startProcessData", res => resolve(res.startProcessData || {}));
+      });
+      console.groupCollapsed("%c📨 Données récupérées depuis chrome.storage.local", "color: purple; font-weight: bold;");
+      console.log(JSON.stringify(processData, null, 2));
+      console.groupEnd();
+    }
+
+    // 🟪 Actions déjà complétées
+    const completedActions = await new Promise(resolve => {
+      chrome.storage.local.get("completedActions", res => resolve(res.completedActions || {}));
+    });
+
+    // 🟪 Charger le scénario depuis JSON
+    const scenario = await fetch(chrome.runtime.getURL("traitement.json"))
+      .then(resp => resp.json())
+      .then(data => {
+        console.groupCollapsed("%c📦 Contenu de traitement.json", "color: teal; font-weight: bold;");
+        console.log(JSON.stringify(data, null, 2));
+        console.groupEnd();
+        return data;
+      })
+      .catch(error => {
+        console.error("%c❌ Erreur chargement traitement.json :", "color: red;", error);
+        return [];
+      });
+
+    // 🟪 Charger et parser gmail_process.js
+    const ispProcess = gmail_process || {};
+
+
+
+    // 🟦 عرض المحتوى brut
+    console.groupCollapsed("%c📂 Contenu brut de ispProcess", "color: orange; font-weight: bold;");
+    console.log(ispProcess);
+    console.log(JSON.stringify(ispProcess, null, 2));
+    console.groupEnd();
+
+    // 🔹 قبل الاستبدال
+    console.groupCollapsed("%c🔹 ispProcess.login avant remplacement", "color: orange; font-weight: bold;");
+    console.log(ispProcess.login);
+    console.log(JSON.stringify(ispProcess.login, null, 2));
+    console.groupEnd();
+
+    // 🟪 Fonction de remplacement مع logs détaillés
+    const replacePlaceholders = (obj) => {
+      if (!obj) return;
+      if (Array.isArray(obj)) {
+        obj.forEach(replacePlaceholders);
+      } else if (typeof obj === "object") {
+        for (let key in obj) {
+          if (typeof obj[key] === "string") {
+            if (obj[key] === "__email__") {
+              console.log(`✏️ Remplacement clé [${key}] : __email__ ➝ ${processData.profile_email || "(vide)"}`);
+              obj[key] = processData.profile_email || obj[key];
+            }
+            if (obj[key] === "__password__") {
+              console.log(`✏️ Remplacement clé [${key}] : __password__ ➝ ${processData.profile_password || "(vide)"}`);
+              obj[key] = processData.profile_password || obj[key];
+            }
+            if (obj[key] === "__recovry__") {
+              console.log(`✏️ Remplacement clé [${key}] : __recovry__ ➝ ${processData.recovery_email || "(vide)"}`);
+              obj[key] = processData.recovery_email || obj[key];
+            }
+          } else if (typeof obj[key] === "object") {
+            replacePlaceholders(obj[key]);
+          }
+        }
+      }
+    };
+
+    replacePlaceholders(ispProcess.login);
+
+    // 🔹 بعد الاستبدال
+    console.groupCollapsed("%c🔹 ispProcess.login après remplacement", "color: green; font-weight: bold;");
+    console.log(ispProcess.login);
+    console.log(JSON.stringify(ispProcess.login, null, 2));
+    console.groupEnd();
+
+    // 🟪 Exécuter scénario
+    await ReportingProcess(scenario, ispProcess);
+
+    // clearChromeStorageLocal();
+
+    console.log("%c✅ Processus terminé avec succès.", "color: green; font-weight: bold;");
+
+  } catch (error) {
+    console.error("%c❌ Erreur lors de la création de la popup :", "color: red;", error);
+  }
 };
 
 
@@ -454,30 +513,6 @@ async function SWitchCase(action, process){
 
 
 
-function waitForBackgroundToFinish(expectedAction) {
-    return new Promise((resolve) => {
-        let seconds = 0;
-        const interval = setInterval(() => {
-        seconds++;
-        console.log(`⏳ [action] En attente depuis ${seconds} seconde(s)...`);
-        }, 1000);
-
-        const listener = (message, sender, sendResponse) => {
-            console.log("📥 [action] Message reçu depuis l’arrière-plan :", message);
-
-            if (message.action === expectedAction) {
-                console.log("🎯 [action] Action attendue reçue :", expectedAction);
-                clearInterval(interval);
-                chrome.runtime.onMessage.removeListener(listener);
-                resolve();
-            }
-        };
-
-        chrome.runtime.onMessage.addListener(listener);
-    });
-}
-
-
 
 
 
@@ -517,49 +552,51 @@ function addUniqueIdsToActions(actions) {
 let processAlreadyRunning = false;
 
 
-
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     try {
         if (message.action === "startProcess") {
+            console.groupCollapsed("%c📨 Données reçues avec startProcess", "color: green; font-weight: bold;");
+            console.log(JSON.stringify(message, null, 2));
+            console.groupEnd();
 
-            // 🔹 عرض كل البيانات المرسلة مع الرسالة
-            console.log("📨 Données reçues avec startProcess:", message);
-
-            if (
-                window.location.href.startsWith("https://contacts.google.com") ||
-                window.location.href.startsWith("https://www.google.com/maps") ||
-                window.location.href.startsWith("https://trends.google.com/trends/") ||
-                window.location.href.startsWith("https://news.google.com/home") 
-            ) {
-                console.log("⛔️ Le processus ne peut pas être démarré depuis cette page.");
+            const forbiddenPages = [
+                "https://contacts.google.com",
+                "https://www.google.com/maps",
+                "https://trends.google.com/trends/",
+                "https://news.google.com/home"
+            ];
+            if (forbiddenPages.some(url => window.location.href.startsWith(url))) {
+                console.warn("⛔️ Le processus ne peut pas être démarré depuis cette page.");
+                sendResponse({ status: "error", message: "Page interdite pour démarrer le processus." });
                 return;
             }
 
             if (processAlreadyRunning) {
-                console.log("⚠️ Processus déjà en cours, demande ignorée.");
+                console.warn("⚠️ Processus déjà en cours, demande ignorée.");
                 sendResponse({ status: "error", message: "Le processus est déjà en cours." });
                 return;
             }
 
-            processAlreadyRunning = true;  
+            processAlreadyRunning = true;
 
-            createPopup()
+            createPopup(message)
                 .then(() => {
                     console.log("✅ Processus terminé avec succès.");
-                    processAlreadyRunning = false;  
+                    processAlreadyRunning = false;
                     sendResponse({ status: "success", message: "Le processus a été démarré avec succès." });
                 })
-                .catch((error) => {
-                    console.log(`❌ Erreur lors du démarrage du processus : ${error.message}`);
-                    processAlreadyRunning = false;  
-                    sendResponse({ status: "error", message: error.message });
+                .catch(err => {
+                    console.error("❌ Erreur lors du démarrage du processus :", err);
+                    processAlreadyRunning = false;
+                    sendResponse({ status: "error", message: err.message });
                 });
         }
-    } catch (error) {
-        console.log("❌ Erreur générale :", error);
-        processAlreadyRunning = false;  
-        sendResponse({ status: "error", message: error.message });
+    } catch (err) {
+        console.error("❌ Erreur générale :", err);
+        processAlreadyRunning = false;
+        sendResponse({ status: "error", message: err.message });
     }
-    return true; // مهم للحفاظ على الاتصال لإرسال response بشكل غير متزامن
+    return true;
 });
+
 
