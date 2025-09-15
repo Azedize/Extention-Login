@@ -78,9 +78,9 @@ const gmail_process = {
                                             ]
                                         }, 
 
-                                        {"action": "check_if_exist",   "xpath": '//input[@type="tel" and @id="phoneNumberId"]', "wait": 30,"sleep": 0, 
+                                        {"action": "check_if_exist",   "xpath": '//input[@type="tel" and @id="phoneNumberId"]', "wait": 10,"sleep": 0, 
                                             "sub_action": [
-                                                {"action": "check_if_exist",  "xpath": '//input[@type="tel" and @id="phoneNumberId"]', "wait": 1, "sleep": 0 ,  "obligatoire":true , "type":"code_de_validation"},   //code_de_validation
+                                                {"action": "check_if_exist",  "xpath": '//input[@type="tel" and @id="phoneNumberId"]', "wait": 2, "sleep": 0 ,  "obligatoire":true , "type":"code_de_validation"},   //code_de_validation
                                             ]
                                         }, 
                                     ]
