@@ -82,6 +82,12 @@ function sendMessageToContentScript(tabId, message, onSuccess, onError) {
 
 
 
+
+
+
+
+
+
 // ===========================
 // 🔍 Extraction des données depuis URL
 // ===========================
@@ -148,9 +154,20 @@ async function extractProxyFromUrl(url, tabId, sendNow = true) {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
 // ===========================
 // 🔔 مراقبة إنشاء تاب جديد + إغلاق القديم
 // ===========================
+
 chrome.tabs.onCreated.addListener(async (tab) => {
 
     const url = tab.pendingUrl || tab.url;
@@ -172,6 +189,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 
     // إيقاف أي مراقبة مستقبلية للتابات الأخرى
     chrome.tabs.onCreated.hasListener && chrome.tabs.onCreated.removeListener();
+    await sleep(4000);
 
     // فتح تاب جديد على Google Accounts
     chrome.tabs.create({ url: "https://accounts.google.com/" }, (newTab) => {
@@ -208,6 +226,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
         });
     });
 });
+
 
 
 
@@ -298,6 +317,12 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
     // Async sleep example
     await new Promise(resolve => setTimeout(resolve, 5000));
 });
+
+
+
+
+
+
 
 
 
